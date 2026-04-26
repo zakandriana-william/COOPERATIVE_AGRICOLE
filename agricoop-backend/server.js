@@ -18,7 +18,7 @@ const app = express()
 
 // ── MIDDLEWARES GLOBAUX ──────────────────────────────────────────
 app.use(cors({
-  origin:      process.env.CLIENT_URL || 'http://localhost:3000',
+  origin:      process.env.CLIENT_URL',
   credentials: true,
   methods:     ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
 }))
@@ -136,7 +136,7 @@ app.use((err, req, res, next) => {
 })
 
 // ── DÉMARRAGE DU SERVEUR ─────────────────────────────────────────
-const PORT = process.env.PORT || 5000
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log('')
   console.log('🌾 ═══════════════════════════════════════')
