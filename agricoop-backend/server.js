@@ -18,10 +18,18 @@ const app = express()
 
 // ── MIDDLEWARES GLOBAUX ──────────────────────────────────────────
 app.use(cors({
-  origin: 'https://cooperative-agricole-phi.vercel.app',
+  origin: function (origin, callback) {
+    // Avelao ny fangatahana tsy misy origin (toy ny curl) na avy amin'ny sehatra Vercel
+    if (!origin || origin.includes('vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods:     ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
 }))
+
 app.use(express.json())
 app.use(morgan('dev'))    // Logs des requêtes HTTP en développement
 
