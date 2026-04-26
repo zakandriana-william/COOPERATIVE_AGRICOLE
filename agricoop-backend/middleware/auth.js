@@ -12,9 +12,9 @@ const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-    // Vérifier que l'utilisateur existe encore en BDD
+    // ✅ Query mifanaraka amin'ny authController
     const [rows] = await pool.query(
-      'SELECT u.*, r.libelle AS role FROM utilisateurs u JOIN roles r ON u.id_role = r.id_role WHERE u.id_utilisateur = ? AND u.statut = "actif"',
+      'SELECT id, nom, prenom, email, role, actif FROM utilisateurs WHERE id = ? AND actif = 1',
       [decoded.id]
     )
 
@@ -44,8 +44,8 @@ const authorize = (...roles) => {
   }
 }
 
-// Raccourcis
-const adminOnly       = authorize('administrateur')
-const adminOrGest     = authorize('administrateur', 'gestionnaire')
+// ── Raccourcis ──────────────────────────────────────────────────
+const adminOnly   = authorize('admin')
+const adminOrGest = authorize('admin', 'gestionnaire')
 
 module.exports = { protect, authorize, adminOnly, adminOrGest }
