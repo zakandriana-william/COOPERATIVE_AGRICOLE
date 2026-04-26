@@ -1,16 +1,12 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { PrivateRoute, AppLayout } from './components/layout/AppLayout'
-
-// Pages Auth
-import LoginPage    from './pages/auth/LoginPage'
-import RegisterPage from './pages/auth/RegisterPage'
-
-// Pages App
+import LoginPage     from './pages/auth/LoginPage'
+import RegisterPage  from './pages/auth/RegisterPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import MembresPage   from './pages/membres/MembresPage'
 import StocksPage    from './pages/stocks/StocksPage'
-import { RecoltesPage }  from './pages/recoltes/RecoltesPage'
+import { RecoltesPage } from './pages/recoltes/RecoltesPage'
 import FinancesPage  from './pages/finances/FinancesPage'
 
 export default function App() {
@@ -22,8 +18,8 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/"         element={<Navigate to="/login" replace />} />
 
-        {/* ── Protégées : Admin + Gestionnaire ── */}
-        <Route element={<PrivateRoute allowedRoles={['admin']} />}>
+        {/* ── Admin + Gestionnaire ── */}
+        <Route element={<PrivateRoute allowedRoles={['admin', 'gestionnaire']} />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/membres"   element={<MembresPage />} />
@@ -32,8 +28,8 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* ── Protégées : Admin seulement ── */}
-        <Route element={<PrivateRoute allowedRoles={['administrateur']} />}>
+        {/* ── Admin seulement ── */}
+        <Route element={<PrivateRoute allowedRoles={['admin']} />}>
           <Route element={<AppLayout />}>
             <Route path="/finances"     element={<FinancesPage />} />
             <Route path="/rapports"     element={<div style={{padding:24}}><h2>📄 Rapports – Bientôt disponible</h2></div>} />
@@ -41,7 +37,7 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* ── Protégées : Membre ── */}
+        {/* ── Membre ── */}
         <Route element={<PrivateRoute allowedRoles={['membre']} />}>
           <Route element={<AppLayout />}>
             <Route path="/profil" element={<div style={{padding:24}}><h2>👤 Mon Profil – Bientôt disponible</h2></div>} />
