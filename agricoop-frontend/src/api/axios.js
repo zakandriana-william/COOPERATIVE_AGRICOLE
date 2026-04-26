@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://cooperative-agricole.onrender.com/api',          // proxy vers http://localhost:5000/api
+  baseURL: 'https://cooperative-agricole.onrender.com/api',         // proxy vers http://localhost:5000/api
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 })
