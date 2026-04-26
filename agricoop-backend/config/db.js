@@ -1,7 +1,6 @@
 const mysql = require('mysql2/promise')
 require('dotenv').config()
 
-// Pool de connexions MySQL (plus performant qu'une connexion unique)
 const pool = mysql.createPool({
   host:               process.env.DB_HOST,
   port:               process.env.DB_PORT,
@@ -11,11 +10,12 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit:    10,
   queueLimit:         0,
-  charset:            'utf8mb4'
-  // ESORO NY SSL: satria localhost tsy mila SSL
+  charset:            'utf8mb4',
+  ssl: {
+    rejectUnauthorized: true  // TiDB mitaky SSL
+  }
 })
 
-// Test de connexion au démarrage
 pool.getConnection()
   .then(conn => {
     console.log('✅ Connecté à MySQL :', process.env.DB_NAME)
