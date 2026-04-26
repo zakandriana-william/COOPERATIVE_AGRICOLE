@@ -101,14 +101,19 @@ app.post('/api/cotisations', _p, adminOnly, async (req, res) => {
 })
 
 // ── UTILISATEURS ─────────────────────────────────────────────────
+    //SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.statut, u.date_inscription, r.libelle AS role
+    //FROM utilisateurs u JOIN roles r ON u.id_role = r.id_role
+    //ORDER BY u.date_inscription DESC
+
 app.get('/api/utilisateurs', _p, adminOnly, async (req, res) => {
   const [rows] = await pool.query(`
-    SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.statut, u.date_inscription, r.libelle AS role
-    FROM utilisateurs u JOIN roles r ON u.id_role = r.id_role
-    ORDER BY u.date_inscription DESC
+    SELECT id, nom, prenom, email, role, actif as statut, created_at as date_inscription
+    FROM utilisateur
+    ORDER BY created_at DESC
   `)
   res.json(rows)
 })
+
 
 app.patch('/api/utilisateurs/:id/role', _p, adminOnly, async (req, res) => {
   const { id_role } = req.body
