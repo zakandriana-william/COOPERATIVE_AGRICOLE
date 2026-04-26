@@ -25,26 +25,23 @@ export default function MembresPage() {
   const [loading, setLoading] = useState(false)
 
   // ✅ Charger depuis le backend
-  const chargerMembres = async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (search) params.append('search', search)
-      if (filterStatut) params.append('statut', filterStatut)
-      if (filterCulture) params.append('type_culture', filterCulture)
-      
-      const url = params.toString() ? `?${params.toString()}` : ''
-      const response = await membresAPI.getAll(url)
-      
-      // La réponse contient { membres, total, page, pages }
-      setMembres(response.data.membres || [])
-    } catch (error) {
-      console.error(error)
-      toast.error('Erreur chargement des membres')
-    } finally {
-      setLoading(false)
-    }
+const chargerMembres = async () => {
+  setLoading(true)
+  try {
+    const params = {}
+    if (search)        params.search       = search
+    if (filterStatut)  params.statut       = filterStatut
+    if (filterCulture) params.type_culture = filterCulture
+
+    const response = await membresAPI.getAll(params) // ← object mivantana
+    setMembres(response.data.membres || [])
+  } catch (error) {
+    console.error(error)
+    toast.error('Erreur chargement des membres')
+  } finally {
+    setLoading(false)
   }
+}
 
   // Chargement initial
   useEffect(() => {
