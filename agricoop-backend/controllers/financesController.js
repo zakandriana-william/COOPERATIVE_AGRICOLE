@@ -16,9 +16,9 @@ const getTransactions = async (req, res) => {
         CONCAT(u.prenom, ' ', u.nom) AS saisie_par,
         CONCAT(um.prenom, ' ', um.nom) AS membre_nom
       FROM transactions t
-      JOIN utilisateurs u ON t.id_utilisateur = u.id_utilisateur
+      JOIN utilisateurs u ON t.id_utilisateur = u.id
       LEFT JOIN membres m ON t.id_membre = m.id_membre
-      LEFT JOIN utilisateurs um ON m.id_utilisateur = um.id_utilisateur
+      LEFT JOIN utilisateurs um ON m.id_utilisateur = um.id
       WHERE ${where.join(' AND ')}
       ORDER BY t.date_transaction DESC
       LIMIT ? OFFSET ?
@@ -44,7 +44,7 @@ const createTransaction = async (req, res) => {
 
     const [result] = await pool.query(
       'INSERT INTO transactions (id_utilisateur, id_membre, type_transaction, categorie, montant, date_transaction, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [req.user.id_utilisateur, id_membre || null, type_transaction, categorie, montant, date_transaction || new Date(), description]
+      [req.user.id, id_membre || null, type_transaction, categorie, montant, date_transaction || new Date(), description]
     )
     res.status(201).json({ message: 'Transaction enregistrée.', id: result.insertId })
   } catch (err) {
@@ -79,7 +79,6 @@ const getBilan = async (req, res) => {
 const genererRecu = async (req, res) => {
   try {
     const { id } = req.params
-    // Vérifier si un reçu existe déjà
     const [existing] = await pool.query('SELECT * FROM recus WHERE id_transaction = ?', [id])
     if (existing.length > 0) return res.json({ message: 'Reçu déjà généré.', recu: existing[0] })
 
@@ -99,24 +98,26 @@ const genererRecu = async (req, res) => {
 // ── GET /api/dashboard/stats ────────────────────────────────────
 const getDashboardStats = async (req, res) => {
   try {
-    const [[membres]]    = await pool.query("SELECT COUNT(*) AS total FROM membres WHERE statut_membre = 'actif'")
-    const [[produits]]   = await pool.query('SELECT COUNT(*) AS total FROM produits')
-    const [[alertes]]    = await pool.query('SELECT COUNT(*) AS total FROM produits WHERE quantite_stock <= seuil_alerte')
-    const [[recoltes]]   = await pool.query('SELECT SUM(quantite_kg) AS total_kg FROM recoltes')
-    const [[finances]]   = await pool.query(`
+    const [[membres]]  = await pool.query("SELECT COUNT(*) AS total FROM membres WHERE statut_membre = 'actif'")
+    const [[produits]] = await pool.query('SELECT COUNT(*) AS total FROM produits')
+    const [[alertes]]  = await pool.query('SELECT COUNT(*) AS total FROM produits WHERE quantite_stock <= seuil_alerte')
+    const [[recoltes]] = await pool.query('SELECT SUM(quantite_kg) AS total_kg FROM recoltes')
+    const [[finances]] = await pool.query(`
       SELECT
         SUM(CASE WHEN type_transaction='recette' THEN montant ELSE 0 END) -
         SUM(CASE WHEN type_transaction='dépense' THEN montant ELSE 0 END) AS solde
       FROM transactions
     `)
-    const [alertesList] = await pool.query('SELECT * FROM produits WHERE quantite_stock <= seuil_alerte ORDER BY quantite_stock ASC LIMIT 5')
+    const [alertesList] = await pool.query(
+      'SELECT * FROM produits WHERE quantite_stock <= seuil_alerte ORDER BY quantite_stock ASC LIMIT 5'
+    )
 
     res.json({
-      membresActifs:    membres.total,
-      produitsStock:    produits.total,
-      alertesStock:     alertes.total,
-      recoltesTotalKg:  recoltes.total_kg || 0,
-      soldeFinancier:   finances.solde   || 0,
+      membresActifs:   membres.total,
+      produitsStock:   produits.total,
+      alertesStock:    alertes.total,
+      recoltesTotalKg: recoltes.total_kg || 0,
+      soldeFinancier:  finances.solde    || 0,
       alertesList,
     })
   } catch (err) {
