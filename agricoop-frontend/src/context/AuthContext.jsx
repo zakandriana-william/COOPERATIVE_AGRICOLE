@@ -18,24 +18,22 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }, [])
 
-// Connexion
-const login = async (email, password) => {
- // const res = await api.post('/auth/login', { email, password })
-  //const { token, user } = res.data
-  const res = await api.post('/auth/login', { email, password })
-  const { token, user } = res.data
-  localStorage.setItem('token', token)
-  localStorage.setItem('user', JSON.stringify(user))
-  api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-  setUser(user)
-  return user
-}
+  // Connexion
+  const login = async (email, password) => {
+    const res = await api.post('/auth/login', { email, password })
+    const { token, user } = res.data
+    localStorage.setItem('token', token)
+    localStorage.setItem('user', JSON.stringify(user))
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    setUser(user)
+    return user
+  }
 
-// Inscription
-const register = async (nom, prenom, email, password) => {
-  const res = await api.post('/auth/register', { nom, prenom, email, password })
-  return res.data
-}
+  // Inscription
+  const register = async (nom, prenom, email, password) => {
+    const res = await api.post('/auth/register', { nom, prenom, email, password })
+    return res.data
+  }
 
   // Déconnexion
   const logout = () => {
