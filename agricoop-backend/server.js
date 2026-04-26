@@ -116,10 +116,10 @@ app.patch('/api/utilisateurs/:id/role', _p, adminOnly, async (req, res) => {
   res.json({ message: 'Rôle mis à jour.' })
 })
 
-app.get('/api/roles', _p, async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM roles')
-  res.json(rows)
-})
+//app.get('/api/roles', _p, async (req, res) => {
+  //const [rows] = await pool.query('SELECT * FROM roles')
+//  res.json(rows)
+//})
 
 // ── FOURNISSEURS ─────────────────────────────────────────────────
 app.get('/api/fournisseurs', _p, adminOrGest, async (req, res) => {
