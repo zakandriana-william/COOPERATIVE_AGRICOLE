@@ -23,11 +23,11 @@ const getMembres = async (req, res) => {
     }
 
     const sql = `
-      SELECT m.*, u.nom, u.prenom, u.email, u.statut AS statut_compte,
-        (SELECT statut_paiement FROM cotisations 
+      SELECT m.*, u.nom, u.prenom, u.email, u.actif AS statut_compte,
+        (SELECT statut_paiement FROM cotisations
          WHERE id_membre = m.id_membre AND annee = YEAR(NOW()) LIMIT 1) AS cotisation_annee
       FROM membres m
-      JOIN utilisateurs u ON m.id_utilisateur = u.id_utilisateur
+      JOIN utilisateurs u ON m.id_utilisateur = u.id
       WHERE ${where.join(' AND ')}
       ORDER BY m.id_membre DESC
       LIMIT ? OFFSET ?
@@ -36,7 +36,7 @@ const getMembres = async (req, res) => {
 
     const [[{ total }]] = await pool.query(
       `SELECT COUNT(*) AS total FROM membres m
-       JOIN utilisateurs u ON m.id_utilisateur = u.id_utilisateur
+       JOIN utilisateurs u ON m.id_utilisateur = u.id
        WHERE ${where.join(' AND ')}`,
       params
     )
@@ -53,7 +53,7 @@ const getMembreById = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT m.*, u.nom, u.prenom, u.email
        FROM membres m
-       JOIN utilisateurs u ON m.id_utilisateur = u.id_utilisateur
+       JOIN utilisateurs u ON m.id_utilisateur = u.id
        WHERE m.id_membre = ?`,
       [req.params.id]
     )
@@ -76,13 +76,10 @@ const createMembre = async (req, res) => {
     const bcrypt = require('bcryptjs')
     const tempPassword = await bcrypt.hash('Temp1234!', 10)
 
-    // ✅ Mampiasa id_role avy amin'ny table roles
-    const [[roleRow]] = await conn.query('SELECT id_role FROM roles WHERE libelle = "membre"')
-    if (!roleRow) throw new Error('Rôle "membre" introuvable dans la table roles.')
-
+    // ✅ Tsy misy id_role — mampiasa column "role" mivantana
     const [userResult] = await conn.query(
-      'INSERT INTO utilisateurs (id_role, nom, prenom, email, mot_de_passe) VALUES (?, ?, ?, ?, ?)',
-      [roleRow.id_role, nom, prenom, email, tempPassword]
+      'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
+      [nom, prenom, email, tempPassword, 'membre', 1]
     )
     const id_utilisateur = userResult.insertId
 
