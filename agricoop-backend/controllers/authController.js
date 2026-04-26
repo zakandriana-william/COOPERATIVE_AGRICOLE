@@ -16,17 +16,17 @@ const register = async (req, res) => {
     if (password.length < 8)
       return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 8 caractères.' })
 
-    // Vérifier email unique
-    const [existing] = await pool.query('SELECT id FROM utilisateur WHERE email = ?', [email])
+    // Vérifier email unique - utilisateurs (AVEC s)
+    const [existing] = await pool.query('SELECT * FROM utilisateurs WHERE email = ?', [email])
     if (existing.length > 0)
       return res.status(409).json({ message: 'Cet email est déjà utilisé.' })
 
     // Hasher le mot de passe
     const hash = await bcrypt.hash(password, 12)
 
-    // Rôle "membre" par défaut (admin, gestionnaire, membre)
+    // Rôle "membre" par défaut
     const [result] = await pool.query(
-      'INSERT INTO utilisateur (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
       [nom, prenom, email, hash, 'membre', 1]
     )
 
@@ -47,10 +47,10 @@ const login = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: 'Email et mot de passe requis.' })
 
-    // Chercher l'utilisateur
+    // Chercher l'utilisateur - utilisateurs (AVEC s)
     const [rows] = await pool.query(
-      `SELECT id, nom, prenom, email, mot_de_passe, role, actif, created_at
-       FROM utilisateur
+      `SELECT id, nom, prenom, email, mot_de_passe, role, actif
+       FROM utilisateurs
        WHERE email = ?`,
       [email]
     )
@@ -60,11 +60,9 @@ const login = async (req, res) => {
 
     const user = rows[0]
 
-    // Vérifier si compte actif
     if (user.actif === 0)
-      return res.status(403).json({ message: 'Votre compte est désactivé. Contactez l\'administrateur.' })
+      return res.status(403).json({ message: 'Votre compte est désactivé.' })
 
-    // Vérifier le mot de passe
     const isMatch = await bcrypt.compare(password, user.mot_de_passe)
     if (!isMatch)
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' })
@@ -80,8 +78,7 @@ const login = async (req, res) => {
         prenom: user.prenom,
         email: user.email,
         role: user.role,
-        actif: user.actif,
-        created_at: user.created_at
+        actif: user.actif
       }
     })
   } catch (err) {
@@ -101,7 +98,7 @@ const getMe = async (req, res) => {
 // ── POST /api/auth/reset-password ──────────────────────────────
 const resetPassword = async (req, res) => {
   const { email } = req.body
-  const [rows] = await pool.query('SELECT id FROM utilisateur WHERE email = ?', [email])
+  const [rows] = await pool.query('SELECT id FROM utilisateurs WHERE email = ?', [email])
   res.json({ message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' })
 }
 
