@@ -18,7 +18,7 @@ const app = express()
 
 // ── MIDDLEWARES GLOBAUX ──────────────────────────────────────────
 app.use(cors({
-  origin:      process.env.CLIENT_URL,
+  origin: 'https://cooperative-agricole-n8ly.vercel.app',
   credentials: true,
   methods:     ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
 }))
