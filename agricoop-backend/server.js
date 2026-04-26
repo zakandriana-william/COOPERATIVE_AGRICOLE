@@ -30,6 +30,9 @@ app.use(morgan('dev'))    // Logs des requêtes HTTP en développement
 // ============================================================
 
 // ── ROUTE DE SANTÉ PUBLIQUE ──────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({ message: '🌾 AgriCoop API est opérationnelle. Rendez-vous sur /api/health' });
+});
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
