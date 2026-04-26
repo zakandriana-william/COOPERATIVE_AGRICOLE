@@ -5,8 +5,9 @@ require('dotenv').config()
 
 const authRoutes     = require('./routes/auth')
 const membresRoutes  = require('./routes/membres')
-// ✅ Import marina
 const stocksRoutes   = require('./routes/stocks')
+const recoltesRoutes = require('./routes/recoltes')
+const financesRoutes = require('./routes/finances')
 const { protect, adminOrGest, adminOnly } = require('./middleware/auth')
 const pool = require('./config/db')
 
@@ -32,39 +33,31 @@ app.get('/', (req, res) => {
   res.json({ message: '🌾 AgriCoop API est opérationnelle.' })
 })
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: '🌾 AgriCoop API opérationnelle', version: '1.0.0', timestamp: new Date().toISOString() })
+  res.json({
+    status: 'OK',
+    message: '🌾 AgriCoop API opérationnelle',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  })
 })
 
+// ── AUTH ─────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes)
 
-// ── ROUTES PROTÉGÉES ─────────────────────────────────────────────
-const recoltesController = require('./controllers/recoltesController')
-const financesController = require('./controllers/financesController')
-
+// ── MEMBRES ──────────────────────────────────────────────────────
 app.use('/api/membres', membresRoutes)
 
-// ✅ stocks — router mivantana
+// ── STOCKS (produits + mouvements) ───────────────────────────────
 app.use('/api', stocksRoutes)
 
-// ── SAISONS ──────────────────────────────────────────────────────
-app.get   ('/api/saisons',        protect, adminOrGest, recoltesController.getSaisons)
-app.get   ('/api/saisons/active', protect, adminOrGest, recoltesController.getSaisonActive)
-app.post  ('/api/saisons',        protect, adminOrGest, recoltesController.createSaison)
-
 // ── RÉCOLTES ─────────────────────────────────────────────────────
-app.get   ('/api/recoltes/comparaison', protect, adminOrGest, recoltesController.getComparaison)
-app.get   ('/api/recoltes',            protect, adminOrGest, recoltesController.getRecoltes)
-app.post  ('/api/recoltes',            protect, adminOrGest, recoltesController.createRecolte)
-app.put   ('/api/recoltes/:id',        protect, adminOrGest, recoltesController.updateRecolte)
-app.delete('/api/recoltes/:id',        protect, adminOnly,   recoltesController.deleteRecolte)
+app.use('/api/recoltes', recoltesRoutes)
 
 // ── FINANCES ─────────────────────────────────────────────────────
-app.get ('/api/transactions/bilan', protect, adminOnly, financesController.getBilan)
-app.get ('/api/transactions',       protect, adminOnly, financesController.getTransactions)
-app.post('/api/transactions',       protect, adminOnly, financesController.createTransaction)
-app.post('/api/transactions/:id/recu', protect, adminOnly, financesController.genererRecu)
+app.use('/api/transactions', financesRoutes)
 
 // ── DASHBOARD ────────────────────────────────────────────────────
+const financesController = require('./controllers/financesController')
 app.get('/api/dashboard/stats', protect, financesController.getDashboardStats)
 
 // ── COTISATIONS ──────────────────────────────────────────────────
@@ -154,7 +147,9 @@ app.use('*', (req, res) => {
 // ── ERREURS GLOBALES ─────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('❌ Erreur serveur :', err.message)
-  res.status(err.status || 500).json({ message: err.message || 'Erreur interne du serveur.' })
+  res.status(err.status || 500).json({
+    message: err.message || 'Erreur interne du serveur.'
+  })
 })
 
 // ── DÉMARRAGE ────────────────────────────────────────────────────
