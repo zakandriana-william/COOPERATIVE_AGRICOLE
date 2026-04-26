@@ -22,21 +22,21 @@ const getMembres = async (req, res) => {
       params.push(s, s, s, s)
     }
 
-    // ✅ JOIN sur "id" fa tsy "id_utilisateur"
     const sql = `
-      SELECT m.*, u.nom, u.prenom, u.email, u.actif AS statut_compte,
+      SELECT m.*, u.nom, u.prenom, u.email, u.statut AS statut_compte,
         (SELECT statut_paiement FROM cotisations 
          WHERE id_membre = m.id_membre AND annee = YEAR(NOW()) LIMIT 1) AS cotisation_annee
       FROM membres m
-      JOIN utilisateurs u ON m.id_utilisateur = u.id
+      JOIN utilisateurs u ON m.id_utilisateur = u.id_utilisateur
       WHERE ${where.join(' AND ')}
       ORDER BY m.id_membre DESC
       LIMIT ? OFFSET ?
     `
     const [membres] = await pool.query(sql, [...params, +limit, +offset])
+
     const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM membres m 
-       JOIN utilisateurs u ON m.id_utilisateur = u.id 
+      `SELECT COUNT(*) AS total FROM membres m
+       JOIN utilisateurs u ON m.id_utilisateur = u.id_utilisateur
        WHERE ${where.join(' AND ')}`,
       params
     )
@@ -51,9 +51,9 @@ const getMembres = async (req, res) => {
 const getMembreById = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT m.*, u.nom, u.prenom, u.email 
+      `SELECT m.*, u.nom, u.prenom, u.email
        FROM membres m
-       JOIN utilisateurs u ON m.id_utilisateur = u.id
+       JOIN utilisateurs u ON m.id_utilisateur = u.id_utilisateur
        WHERE m.id_membre = ?`,
       [req.params.id]
     )
@@ -71,15 +71,18 @@ const createMembre = async (req, res) => {
     await conn.beginTransaction()
     const { nom, prenom, email, telephone, localisation, type_culture, superficie_ha, date_adhesion } = req.body
     if (!nom || !prenom || !email || !date_adhesion)
-      return res.status(400).json({ message: 'Nom, prénom, email et date d\'adhésion requis.' })
+      return res.status(400).json({ message: "Nom, prénom, email et date d'adhésion requis." })
 
     const bcrypt = require('bcryptjs')
     const tempPassword = await bcrypt.hash('Temp1234!', 10)
 
-    // ✅ INSERT amin'ny structure vaovao — tsy misy id_role, mampiasa "role" column
+    // ✅ Mampiasa id_role avy amin'ny table roles
+    const [[roleRow]] = await conn.query('SELECT id_role FROM roles WHERE libelle = "membre"')
+    if (!roleRow) throw new Error('Rôle "membre" introuvable dans la table roles.')
+
     const [userResult] = await conn.query(
-      'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
-      [nom, prenom, email, tempPassword, 'membre', 1]
+      'INSERT INTO utilisateurs (id_role, nom, prenom, email, mot_de_passe) VALUES (?, ?, ?, ?, ?)',
+      [roleRow.id_role, nom, prenom, email, tempPassword]
     )
     const id_utilisateur = userResult.insertId
 
