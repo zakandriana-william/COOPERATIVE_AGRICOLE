@@ -23,7 +23,7 @@ export default function App() {
         <Route path="/"         element={<Navigate to="/login" replace />} />
 
         {/* ── Protégées : Admin + Gestionnaire ── */}
-        <Route element={<PrivateRoute allowedRoles={['administrateur','gestionnaire']} />}>
+        <Route element={<PrivateRoute allowedRoles={['admin']} />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/membres"   element={<MembresPage />} />
