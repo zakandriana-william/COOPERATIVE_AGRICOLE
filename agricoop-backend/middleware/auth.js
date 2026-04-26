@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken')
 const pool = require('../config/db')
 
-// ── Middleware : vérifier le token JWT ──────────────────────────
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization
@@ -12,9 +11,12 @@ const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-    // ✅ Query mifanaraka amin'ny authController
+    // ✅ Mampiasa id_utilisateur sy JOIN roles
     const [rows] = await pool.query(
-      'SELECT id, nom, prenom, email, role, actif FROM utilisateurs WHERE id = ? AND actif = 1',
+      `SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.statut, r.libelle AS role
+       FROM utilisateurs u
+       JOIN roles r ON u.id_role = r.id_role
+       WHERE u.id_utilisateur = ? AND u.statut = 'actif'`,
       [decoded.id]
     )
 
@@ -32,7 +34,6 @@ const protect = async (req, res, next) => {
   }
 }
 
-// ── Middleware : restreindre par rôle ───────────────────────────
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
@@ -44,8 +45,7 @@ const authorize = (...roles) => {
   }
 }
 
-// ── Raccourcis ──────────────────────────────────────────────────
-const adminOnly   = authorize('admin')
-const adminOrGest = authorize('admin', 'gestionnaire')
+const adminOnly   = authorize('administrateur')
+const adminOrGest = authorize('administrateur', 'gestionnaire')
 
 module.exports = { protect, authorize, adminOnly, adminOrGest }
