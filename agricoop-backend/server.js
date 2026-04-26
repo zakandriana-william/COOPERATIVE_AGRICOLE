@@ -25,6 +25,15 @@ app.use(cors({
 app.use(express.json())
 app.use(morgan('dev'))    // Logs des requêtes HTTP en développement
 
+// ── ROUTE DE SANTÉ ───────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: '🌾 AgriCoop API opérationnelle',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+  })
+})
 // ── ROUTES API ───────────────────────────────────────────────────
 app.use('/api/auth',         authRoutes)
 app.use('/api/membres',      membresRoutes)
@@ -111,15 +120,6 @@ app.post('/api/fournisseurs', _p, adminOrGest, async (req, res) => {
   res.status(201).json({ message: 'Fournisseur créé.', id: r.insertId })
 })
 
-// ── ROUTE DE SANTÉ ───────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    message: '🌾 AgriCoop API opérationnelle',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-  })
-})
 
 // ── GESTION DES ROUTES INCONNUES ────────────────────────────────
 app.use('*', (req, res) => {
