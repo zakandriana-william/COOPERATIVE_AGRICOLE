@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 
 const AuthContext = createContext(null)
@@ -7,18 +8,17 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Vérifier le token au démarrage
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token     = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
     if (token && savedUser) {
-      setUser(JSON.parse(savedUser))
+      const u = JSON.parse(savedUser)
+      setUser(u)
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`
     }
     setLoading(false)
   }, [])
 
-  // Connexion
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password })
     const { token, user } = res.data
@@ -29,13 +29,11 @@ export function AuthProvider({ children }) {
     return user
   }
 
-  // Inscription
   const register = async (nom, prenom, email, password) => {
-  const res = await api.post('/auth/login', { email, password })
-  const { token, user } = res.data
+    const res = await api.post('/auth/register', { nom, prenom, email, password })
+    return res.data
   }
 
-  // Déconnexion
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -43,11 +41,10 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  // Vérifier le rôle
-  const hasRole = (role) => user?.role === role
-  const isAdmin = () => hasRole('administrateur')
+  const hasRole      = (role) => user?.role === role
+  const isAdmin      = () => hasRole('admin')
   const isGestionnaire = () => hasRole('gestionnaire') || isAdmin()
-  const isMembre = () => hasRole('membre')
+  const isMembre     = () => hasRole('membre')
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, isGestionnaire, isMembre }}>
