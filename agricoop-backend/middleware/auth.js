@@ -10,10 +10,10 @@ const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
+    // ✅ Query tsotra — tsy misy JOIN na subquery
     const [rows] = await pool.query(
-      `SELECT id_utilisateur AS id, nom, prenom, email, statut,
-              (SELECT r.libelle FROM roles r WHERE r.id_role = u.id_role) AS role
-       FROM utilisateurs u
+      `SELECT id_utilisateur AS id, nom, prenom, email, statut, id_role
+       FROM utilisateurs
        WHERE id_utilisateur = ? AND statut = 'actif'`,
       [decoded.id]
     )
@@ -21,7 +21,17 @@ const protect = async (req, res, next) => {
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Utilisateur introuvable ou suspendu.' })
     }
-    req.user = rows[0]
+
+    // ✅ Jereo ny role avy amin'ny id_role
+    const user = rows[0]
+    if (user.id_role === 1) user.role = 'administrateur'
+    else if (user.id_role === 2) user.role = 'gestionnaire'
+    else user.role = 'membre'
+
+    // ✅ Raha ny token misy role mivantana, mampiasa azy
+    if (decoded.role) user.role = decoded.role
+
+    req.user = user
     next()
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
