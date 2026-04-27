@@ -8,6 +8,8 @@ import MembresPage   from './pages/membres/MembresPage'
 import StocksPage    from './pages/stocks/StocksPage'
 import { RecoltesPage } from './pages/recoltes/RecoltesPage'
 import FinancesPage  from './pages/finances/FinancesPage'
+import RapportsPage  from './pages/rapports/RapportsPage'
+import UtilisateursPage from './pages/utilisateurs/UtilisateursPage'
 
 export default function App() {
   return (
@@ -15,8 +17,12 @@ export default function App() {
       <Routes>
         {/* ── Publiques ── */}
         <Route path="/login"    element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
         <Route path="/"         element={<Navigate to="/login" replace />} />
+
+        {/* ── Register — Admin seulement ── */}
+        <Route element={<PrivateRoute allowedRoles={['admin']} />}>
+          <Route path="/register" element={<RegisterPage />} />
+        </Route>
 
         {/* ── Admin + Gestionnaire ── */}
         <Route element={<PrivateRoute allowedRoles={['admin', 'gestionnaire']} />}>
@@ -32,8 +38,8 @@ export default function App() {
         <Route element={<PrivateRoute allowedRoles={['admin']} />}>
           <Route element={<AppLayout />}>
             <Route path="/finances"     element={<FinancesPage />} />
-            <Route path="/rapports"     element={<div style={{padding:24}}><h2>📄 Rapports – Bientôt disponible</h2></div>} />
-            <Route path="/utilisateurs" element={<div style={{padding:24}}><h2>🛡 Utilisateurs – Bientôt disponible</h2></div>} />
+            <Route path="/rapports"     element={<RapportsPage />} />
+            <Route path="/utilisateurs" element={<UtilisateursPage />} />
           </Route>
         </Route>
 
@@ -44,7 +50,6 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* 404 */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </AuthProvider>
