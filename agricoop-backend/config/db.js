@@ -12,7 +12,7 @@ const pool = mysql.createPool({
   queueLimit:         0,
   charset:            'utf8mb4',
   ssl: {
-    rejectUnauthorized: true  // TiDB mitaky SSL
+    rejectUnauthorized: false  // <-- IZY IZAO no ovaina!
   }
 })
 
