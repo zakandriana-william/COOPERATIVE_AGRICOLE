@@ -1,59 +1,90 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { useState, useEffect } from 'react'
+import { utilisateursAPI } from '../../api/services'
+import toast from 'react-hot-toast'
 
-const UtilisateursPage = () => {
-  const [utilisateurs, setUtilisateurs] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function UtilisateursPage() {
+  const [utilisateurs, setUtilisateurs] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    const fetchUtilisateurs = async () => {
-      try {
-        const response = await api.get('/utilisateurs');
-        setUtilisateurs(response.data);
-      } catch (error) {
-        console.error('Erreur:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUtilisateurs();
-  }, []);
+  const charger = async () => {
+    setLoading(true)
+    try {
+      const res = await utilisateursAPI.getAll()
+      setUtilisateurs(res.data || [])
+    } catch (err) {
+      toast.error('Erreur chargement utilisateurs')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  if (loading) return <div className="p-6">Chargement...</div>;
+  useEffect(() => { charger() }, [])
+
+  const changerRole = async (id, role) => {
+    try {
+      await utilisateursAPI.update(id, { role })
+      toast.success('Rôle mis à jour !')
+      charger()
+    } catch (err) {
+      toast.error('Erreur changement rôle')
+    }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 60 }}>⏳ Chargement...</div>
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Gestion des Utilisateurs</h1>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left">ID</th>
-              <th className="px-6 py-3 text-left">Nom Complet</th>
-              <th className="px-6 py-3 text-left">Email</th>
-              <th className="px-6 py-3 text-left">Rôle</th>
-              <th className="px-6 py-3 text-left">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {utilisateurs.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4">{user.id}</td>
-                <td className="px-6 py-4">{user.nom} {user.prenom}</td>
-                <td className="px-6 py-4">{user.email}</td>
-                <td className="px-6 py-4">{user.role}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded text-xs ${user.actif === 1 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {user.actif === 1 ? 'Actif' : 'Inactif'}
-                  </span>
-                </td>
+    <div className="slide-up">
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">🛡 Gestion des Utilisateurs</div>
+        </div>
+        <div className="card-body">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Statut</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {utilisateurs.length === 0 ? (
+                <tr><td colSpan="5" style={{ textAlign: 'center', padding: 24 }}>Aucun utilisateur trouvé</td></tr>
+              ) : (
+                utilisateurs.map(u => (
+                  <tr key={u.id}>
+                    <td className="bold">{u.prenom} {u.nom}</td>
+                    <td>{u.email}</td>
+                    <td>
+                      <select
+                        className="form-select"
+                        value={u.role}
+                        onChange={e => changerRole(u.id, e.target.value)}
+                        style={{ padding: '4px 8px', fontSize: '0.78rem' }}
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="gestionnaire">Gestionnaire</option>
+                        <option value="membre">Membre</option>
+                      </select>
+                    </td>
+                    <td>
+                      {u.statut === 'actif'
+                        ? <span className="badge badge-green">Actif</span>
+                        : <span className="badge badge-red">Suspendu</span>
+                      }
+                    </td>
+                    <td>
+                      <div className="action-btn" onClick={() => changerRole(u.id, u.role)}>✏️</div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  );
-};
-
-export default UtilisateursPage;
+  )
+}
