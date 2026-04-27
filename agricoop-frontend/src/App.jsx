@@ -25,7 +25,7 @@ export default function App() {
         </Route>
 
         {/* ── Admin + Gestionnaire ── */}
-        <Route element={<PrivateRoute allowedRoles={['admin', 'gestionnaire']} />}>
+        <Route element={<PrivateRoute allowedRoles={['administrateur']} />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/membres"   element={<MembresPage />} />
