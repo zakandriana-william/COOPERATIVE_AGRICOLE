@@ -12,14 +12,10 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Tous les champs sont requis.' })
     if (password.length < 8)
       return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 8 caractères.' })
-
     const [existing] = await pool.query('SELECT * FROM utilisateurs WHERE email = ?', [email])
     if (existing.length > 0)
       return res.status(409).json({ message: 'Cet email est déjà utilisé.' })
-
     const hash = await bcrypt.hash(password, 12)
-
-    // ✅ Tsy misy JOIN roles
     const [result] = await pool.query(
       'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
       [nom, prenom, email, hash, 'membre', 1]
@@ -37,7 +33,6 @@ const login = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: 'Email et mot de passe requis.' })
 
-    // ✅ Tsy misy JOIN roles — jereo ny columns marina ao DB
     const [rows] = await pool.query(
       `SELECT * FROM utilisateurs WHERE email = ?`,
       [email]
@@ -47,13 +42,13 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' })
 
     const user = rows[0]
-    console.log('USER COLUMNS:', Object.keys(user)) // ← hahitantsika ny columns marina
+    console.log('USER COLUMNS:', Object.keys(user))
 
     const suspended = user.statut === 'suspendu' || user.actif === 0
     if (suspended)
       return res.status(403).json({ message: 'Votre compte est désactivé.' })
 
-    const passwordField = user.mot_de_passe || user.password || user.mot_de_passe
+    const passwordField = user.mot_de_passe || user.password
     const isMatch = await bcrypt.compare(password, passwordField)
     if (!isMatch)
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' })
