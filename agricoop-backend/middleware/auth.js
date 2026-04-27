@@ -10,18 +10,28 @@ const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-    // ✅ mampiasa id_utilisateur sy JOIN roles sy statut
+    // ✅ Query tsotra — tsy misy JOIN na subquery
     const [rows] = await pool.query(
-      `SELECT u.id_utilisateur AS id, u.nom, u.prenom, u.email, u.statut, r.libelle AS role
-       FROM utilisateurs u
-       JOIN roles r ON u.id_role = r.id_role
-       WHERE u.id_utilisateur = ? AND u.statut = 'actif'`,
+      `SELECT id_utilisateur AS id, nom, prenom, email, statut, id_role
+       FROM utilisateurs
+       WHERE id_utilisateur = ? AND statut = 'actif'`,
       [decoded.id]
     )
+
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Utilisateur introuvable ou suspendu.' })
     }
-    req.user = rows[0]
+
+    // ✅ Jereo ny role avy amin'ny id_role
+    const user = rows[0]
+    if (user.id_role === 1) user.role = 'administrateur'
+    else if (user.id_role === 2) user.role = 'gestionnaire'
+    else user.role = 'membre'
+
+    // ✅ Raha ny token misy role mivantana, mampiasa azy
+    if (decoded.role) user.role = decoded.role
+
+    req.user = user
     next()
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
@@ -42,7 +52,7 @@ const authorize = (...roles) => {
   }
 }
 
-const adminOnly   = authorize('administrateur')
-const adminOrGest = authorize('administrateur', 'gestionnaire')
+const adminOnly   = authorize('admin')
+const adminOrGest = authorize('admin', 'gestionnaire')
 
 module.exports = { protect, authorize, adminOnly, adminOrGest }

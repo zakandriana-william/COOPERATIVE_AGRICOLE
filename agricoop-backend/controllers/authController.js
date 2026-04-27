@@ -16,9 +16,10 @@ const register = async (req, res) => {
     if (existing.length > 0)
       return res.status(409).json({ message: 'Cet email est déjà utilisé.' })
     const hash = await bcrypt.hash(password, 12)
+    const [[roleRow]] = await pool.query('SELECT id_role FROM roles WHERE libelle = "membre"')
     const [result] = await pool.query(
-      'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
-      [nom, prenom, email, hash, 'membre', 1]
+      'INSERT INTO utilisateurs (id_role, nom, prenom, email, mot_de_passe) VALUES (?, ?, ?, ?, ?)',
+      [roleRow.id_role, nom, prenom, email, hash]
     )
     res.status(201).json({ message: 'Compte créé avec succès.', id: result.insertId })
   } catch (err) {
@@ -33,11 +34,7 @@ const login = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: 'Email et mot de passe requis.' })
 
-    const [rows] = await pool.query(
-      `SELECT * FROM utilisateurs WHERE email = ?`,
-      [email]
-    )
-
+    const [rows] = await pool.query(`SELECT * FROM utilisateurs WHERE email = ?`, [email])
     if (rows.length === 0)
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' })
 
