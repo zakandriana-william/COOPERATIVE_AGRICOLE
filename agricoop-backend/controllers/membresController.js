@@ -6,57 +6,43 @@ const genNumero = async () => {
   return `M-${String(num).padStart(4, '0')}`
 }
 
-// GET /api/membres
 const getMembres = async (req, res) => {
   try {
-    const { statut, type_culture, search, page = 1, limit = 10 } = req.query
+    const { statut, culture, search, page = 1, limit = 10 } = req.query
     const offset = (page - 1) * limit
     let where = ['1=1']
     const params = []
-
-    if (statut)       { where.push('m.statut_membre = ?'); params.push(statut) }
-    if (type_culture) { where.push('m.type_culture = ?');  params.push(type_culture) }
+    if (statut)  { where.push('m.statut = ?');  params.push(statut) }
+    if (culture) { where.push('m.culture = ?'); params.push(culture) }
     if (search) {
-      where.push('(u.nom LIKE ? OR u.prenom LIKE ? OR m.numero_membre LIKE ? OR m.localisation LIKE ?)')
+      where.push('(m.nom LIKE ? OR m.prenom LIKE ? OR m.email LIKE ? OR m.localisation LIKE ?)')
       const s = `%${search}%`
       params.push(s, s, s, s)
     }
 
     const sql = `
-      SELECT m.*, u.nom, u.prenom, u.email, u.actif AS statut_compte,
+      SELECT m.*,
         (SELECT statut_paiement FROM cotisations
-         WHERE id_membre = m.id_membre AND annee = YEAR(NOW()) LIMIT 1) AS cotisation_annee
+         WHERE membre_id = m.id AND annee = YEAR(NOW()) LIMIT 1) AS cotisation_annee
       FROM membres m
-      JOIN utilisateurs u ON m.id_utilisateur = u.id
       WHERE ${where.join(' AND ')}
-      ORDER BY m.id_membre DESC
+      ORDER BY m.id DESC
       LIMIT ? OFFSET ?
     `
     const [membres] = await pool.query(sql, [...params, +limit, +offset])
-
     const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM membres m
-       JOIN utilisateurs u ON m.id_utilisateur = u.id
-       WHERE ${where.join(' AND ')}`,
+      `SELECT COUNT(*) AS total FROM membres m WHERE ${where.join(' AND ')}`,
       params
     )
-
     res.json({ membres, total, page: +page, pages: Math.ceil(total / limit) })
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.', error: err.message })
   }
 }
 
-// GET /api/membres/:id
 const getMembreById = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT m.*, u.nom, u.prenom, u.email
-       FROM membres m
-       JOIN utilisateurs u ON m.id_utilisateur = u.id
-       WHERE m.id_membre = ?`,
-      [req.params.id]
-    )
+    const [rows] = await pool.query('SELECT * FROM membres WHERE id = ?', [req.params.id])
     if (rows.length === 0) return res.status(404).json({ message: 'Membre introuvable.' })
     res.json(rows[0])
   } catch (err) {
@@ -64,49 +50,38 @@ const getMembreById = async (req, res) => {
   }
 }
 
-// POST /api/membres
 const createMembre = async (req, res) => {
-  const conn = await pool.getConnection()
   try {
-    await conn.beginTransaction()
-    const { nom, prenom, email, telephone, localisation, type_culture, superficie_ha, date_adhesion } = req.body
+    const { nom, prenom, email, telephone, localisation, culture, date_adhesion } = req.body
     if (!nom || !prenom || !email || !date_adhesion)
       return res.status(400).json({ message: "Nom, prénom, email et date d'adhésion requis." })
 
     const bcrypt = require('bcryptjs')
     const tempPassword = await bcrypt.hash('Temp1234!', 10)
 
-    // ✅ Tsy misy id_role — mampiasa column "role" mivantana
-    const [userResult] = await conn.query(
+    const [userResult] = await pool.query(
       'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
       [nom, prenom, email, tempPassword, 'membre', 1]
     )
-    const id_utilisateur = userResult.insertId
 
-    const numero_membre = await genNumero()
-    const [membreResult] = await conn.query(
-      'INSERT INTO membres (id_utilisateur, numero_membre, telephone, localisation, type_culture, superficie_ha, date_adhesion) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id_utilisateur, numero_membre, telephone, localisation, type_culture, superficie_ha, date_adhesion]
+    const [membreResult] = await pool.query(
+      'INSERT INTO membres (utilisateur_id, nom, prenom, email, telephone, localisation, culture, date_adhesion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [userResult.insertId, nom, prenom, email, telephone, localisation, culture, date_adhesion]
     )
 
-    await conn.commit()
-    res.status(201).json({ message: 'Membre créé avec succès.', id: membreResult.insertId, numero_membre })
+    res.status(201).json({ message: 'Membre créé avec succès.', id: membreResult.insertId })
   } catch (err) {
-    await conn.rollback()
     if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Cet email est déjà utilisé.' })
     res.status(500).json({ message: 'Erreur serveur.', error: err.message })
-  } finally {
-    conn.release()
   }
 }
 
-// PUT /api/membres/:id
 const updateMembre = async (req, res) => {
   try {
-    const { telephone, localisation, type_culture, superficie_ha, statut_membre } = req.body
+    const { telephone, localisation, culture, statut } = req.body
     const [result] = await pool.query(
-      'UPDATE membres SET telephone=?, localisation=?, type_culture=?, superficie_ha=?, statut_membre=? WHERE id_membre=?',
-      [telephone, localisation, type_culture, superficie_ha, statut_membre, req.params.id]
+      'UPDATE membres SET telephone=?, localisation=?, culture=?, statut=? WHERE id=?',
+      [telephone, localisation, culture, statut, req.params.id]
     )
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Membre introuvable.' })
     res.json({ message: 'Membre mis à jour.' })
@@ -115,31 +90,28 @@ const updateMembre = async (req, res) => {
   }
 }
 
-// PATCH /api/membres/:id/suspendre
 const suspendreMembre = async (req, res) => {
   try {
-    await pool.query('UPDATE membres SET statut_membre="suspendu" WHERE id_membre=?', [req.params.id])
+    await pool.query('UPDATE membres SET statut="suspendu" WHERE id=?', [req.params.id])
     res.json({ message: 'Membre suspendu.' })
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' })
   }
 }
 
-// PATCH /api/membres/:id/reactiver
 const reactiverMembre = async (req, res) => {
   try {
-    await pool.query('UPDATE membres SET statut_membre="actif" WHERE id_membre=?', [req.params.id])
+    await pool.query('UPDATE membres SET statut="actif" WHERE id=?', [req.params.id])
     res.json({ message: 'Membre réactivé.' })
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' })
   }
 }
 
-// GET /api/membres/:id/cotisations
 const getCotisationsMembre = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT * FROM cotisations WHERE id_membre = ? ORDER BY annee DESC',
+      'SELECT * FROM cotisations WHERE membre_id = ? ORDER BY annee DESC',
       [req.params.id]
     )
     res.json(rows)
