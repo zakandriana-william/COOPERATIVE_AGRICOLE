@@ -6,9 +6,9 @@ const getProduits = async (req, res) => {
     let where = ['1=1']
     const params = []
     if (categorie) { where.push('categorie = ?'); params.push(categorie) }
-    if (search)    { where.push('nom_produit LIKE ?'); params.push(`%${search}%`) }
+    if (search)    { where.push('nom LIKE ?'); params.push(`%${search}%`) }
     const [produits] = await pool.query(
-      `SELECT *, ROUND(quantite_stock / seuil_alerte * 100, 0) AS niveau_pct FROM produits WHERE ${where.join(' AND ')} ORDER BY nom_produit`,
+      `SELECT *, ROUND(quantite / seuil_alerte * 100, 0) AS niveau_pct FROM stocks WHERE ${where.join(' AND ')} ORDER BY nom`,
       params
     )
     res.json(produits)
@@ -19,7 +19,7 @@ const getProduits = async (req, res) => {
 
 const getAlertes = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM produits WHERE quantite_stock <= seuil_alerte ORDER BY quantite_stock ASC')
+    const [rows] = await pool.query('SELECT * FROM stocks WHERE quantite <= seuil_alerte ORDER BY quantite ASC')
     res.json(rows)
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' })
@@ -28,7 +28,7 @@ const getAlertes = async (req, res) => {
 
 const getProduitById = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM produits WHERE id_produit = ?', [req.params.id])
+    const [rows] = await pool.query('SELECT * FROM stocks WHERE id = ?', [req.params.id])
     if (rows.length === 0) return res.status(404).json({ message: 'Produit introuvable.' })
     res.json(rows[0])
   } catch (err) {
@@ -38,12 +38,12 @@ const getProduitById = async (req, res) => {
 
 const createProduit = async (req, res) => {
   try {
-    const { nom_produit, categorie, unite, quantite_stock = 0, seuil_alerte, prix_unitaire } = req.body
-    if (!nom_produit || !categorie || !unite || !seuil_alerte)
+    const { nom, categorie, unite, quantite = 0, seuil_alerte, description } = req.body
+    if (!nom || !categorie || !unite || !seuil_alerte)
       return res.status(400).json({ message: 'Champs requis manquants.' })
     const [result] = await pool.query(
-      'INSERT INTO produits (nom_produit, categorie, unite, quantite_stock, seuil_alerte, prix_unitaire) VALUES (?, ?, ?, ?, ?, ?)',
-      [nom_produit, categorie, unite, quantite_stock, seuil_alerte, prix_unitaire]
+      'INSERT INTO stocks (nom, categorie, unite, quantite, seuil_alerte, description) VALUES (?, ?, ?, ?, ?, ?)',
+      [nom, categorie, unite, quantite, seuil_alerte, description]
     )
     res.status(201).json({ message: 'Produit créé.', id: result.insertId })
   } catch (err) {
@@ -53,10 +53,10 @@ const createProduit = async (req, res) => {
 
 const updateProduit = async (req, res) => {
   try {
-    const { nom_produit, categorie, unite, seuil_alerte, prix_unitaire } = req.body
+    const { nom, categorie, unite, seuil_alerte, description } = req.body
     const [result] = await pool.query(
-      'UPDATE produits SET nom_produit=?, categorie=?, unite=?, seuil_alerte=?, prix_unitaire=? WHERE id_produit=?',
-      [nom_produit, categorie, unite, seuil_alerte, prix_unitaire, req.params.id]
+      'UPDATE stocks SET nom=?, categorie=?, unite=?, seuil_alerte=?, description=? WHERE id=?',
+      [nom, categorie, unite, seuil_alerte, description, req.params.id]
     )
     if (result.affectedRows === 0) return res.status(404).json({ message: 'Produit introuvable.' })
     res.json({ message: 'Produit mis à jour.' })
@@ -67,28 +67,13 @@ const updateProduit = async (req, res) => {
 
 const getMouvements = async (req, res) => {
   try {
-    const { id_produit, type_mouvement, page = 1, limit = 20 } = req.query
-    const offset = (page - 1) * limit
-    let where = ['1=1']
-    const params = []
-    if (id_produit)     { where.push('ms.id_produit = ?');     params.push(id_produit) }
-    if (type_mouvement) { where.push('ms.type_mouvement = ?'); params.push(type_mouvement) }
-
     const [rows] = await pool.query(`
-      SELECT ms.*,
-        p.nom_produit, p.unite,
-        CONCAT(u.prenom, ' ', u.nom) AS membre_nom,
-        f.nom_fournisseur
+      SELECT ms.*, s.nom AS nom_produit, s.unite
       FROM mouvements_stock ms
-      JOIN produits p ON ms.id_produit = p.id_produit
-      LEFT JOIN membres mb ON ms.id_membre = mb.id_membre
-      LEFT JOIN utilisateurs u ON mb.id_utilisateur = u.id
-      LEFT JOIN fournisseurs f ON ms.id_fournisseur = f.id_fournisseur
-      WHERE ${where.join(' AND ')}
+      JOIN stocks s ON ms.id_produit = s.id
       ORDER BY ms.date_mouvement DESC
-      LIMIT ? OFFSET ?
-    `, [...params, +limit, +offset])
-
+      LIMIT 50
+    `)
     res.json(rows)
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.', error: err.message })
@@ -99,33 +84,33 @@ const createMouvement = async (req, res) => {
   const conn = await pool.getConnection()
   try {
     await conn.beginTransaction()
-    const { id_produit, id_membre, id_fournisseur, type_mouvement, quantite, motif } = req.body
+    const { id_produit, type_mouvement, quantite, motif } = req.body
     if (!id_produit || !type_mouvement || !quantite)
       return res.status(400).json({ message: 'Produit, type et quantité requis.' })
 
     if (type_mouvement === 'sortie') {
-      const [[produit]] = await conn.query('SELECT quantite_stock FROM produits WHERE id_produit = ?', [id_produit])
+      const [[produit]] = await conn.query('SELECT quantite FROM stocks WHERE id = ?', [id_produit])
       if (!produit) return res.status(404).json({ message: 'Produit introuvable.' })
-      if (produit.quantite_stock < quantite)
-        return res.status(400).json({ message: `Stock insuffisant. Disponible : ${produit.quantite_stock}` })
+      if (produit.quantite < quantite)
+        return res.status(400).json({ message: `Stock insuffisant. Disponible : ${produit.quantite}` })
     }
 
     const [result] = await conn.query(
-      'INSERT INTO mouvements_stock (id_produit, id_membre, id_fournisseur, type_mouvement, quantite, motif) VALUES (?, ?, ?, ?, ?, ?)',
-      [id_produit, id_membre || null, id_fournisseur || null, type_mouvement, quantite, motif]
+      'INSERT INTO mouvements_stock (id_produit, type_mouvement, quantite, motif) VALUES (?, ?, ?, ?)',
+      [id_produit, type_mouvement, quantite, motif]
     )
 
     const delta = type_mouvement === 'entrée' ? quantite : -quantite
-    await conn.query('UPDATE produits SET quantite_stock = quantite_stock + ? WHERE id_produit = ?', [delta, id_produit])
+    await conn.query('UPDATE stocks SET quantite = quantite + ? WHERE id = ?', [delta, id_produit])
 
-    const [[produitMaj]] = await conn.query('SELECT nom_produit, quantite_stock, seuil_alerte FROM produits WHERE id_produit = ?', [id_produit])
-    const estCritique = produitMaj.quantite_stock <= produitMaj.seuil_alerte
+    const [[produitMaj]] = await conn.query('SELECT nom, quantite, seuil_alerte FROM stocks WHERE id = ?', [id_produit])
+    const estCritique = produitMaj.quantite <= produitMaj.seuil_alerte
 
     await conn.commit()
     res.status(201).json({
       message: 'Mouvement enregistré.',
       id: result.insertId,
-      alerte: estCritique ? `⚠️ Stock critique pour ${produitMaj.nom_produit} !` : null,
+      alerte: estCritique ? `⚠️ Stock critique pour ${produitMaj.nom} !` : null,
     })
   } catch (err) {
     await conn.rollback()
