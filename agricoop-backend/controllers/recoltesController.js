@@ -1,26 +1,22 @@
 const pool = require('../config/db')
 
-// ════════════════════════════════════════
-//  RÉCOLTES
-// ════════════════════════════════════════
-
 const getRecoltes = async (req, res) => {
   try {
     const { id_saison, id_membre, type_culture } = req.query
     let where = ['1=1']
     const params = []
-    if (id_saison)     { where.push('r.id_saison = ?');     params.push(id_saison) }
-    if (id_membre)     { where.push('r.id_membre = ?');     params.push(id_membre) }
-    if (type_culture)  { where.push('r.type_culture = ?');  params.push(type_culture) }
+    if (id_saison)    { where.push('r.id_saison = ?');    params.push(id_saison) }
+    if (id_membre)    { where.push('r.id_membre = ?');    params.push(id_membre) }
+    if (type_culture) { where.push('r.type_culture = ?'); params.push(type_culture) }
 
     const [rows] = await pool.query(`
       SELECT r.*,
         CONCAT(u.prenom, ' ', u.nom) AS membre_nom,
         s.nom_saison
       FROM recoltes r
-      JOIN membres m  ON r.id_membre = m.id_membre
-      JOIN utilisateurs u ON m.id_utilisateur = u.id_utilisateur
-      JOIN saisons s  ON r.id_saison = s.id_saison
+      JOIN membres m ON r.id_membre = m.id_membre
+      JOIN utilisateurs u ON m.id_utilisateur = u.id
+      JOIN saisons s ON r.id_saison = s.id_saison
       WHERE ${where.join(' AND ')}
       ORDER BY r.date_recolte DESC
     `, params)
@@ -36,7 +32,6 @@ const createRecolte = async (req, res) => {
     const { id_membre, id_saison, type_culture, quantite_kg, superficie_ha, date_recolte } = req.body
     if (!id_membre || !id_saison || !type_culture || !quantite_kg || !superficie_ha || !date_recolte)
       return res.status(400).json({ message: 'Tous les champs sont requis.' })
-
     const [result] = await pool.query(
       'INSERT INTO recoltes (id_membre, id_saison, type_culture, quantite_kg, superficie_ha, date_recolte) VALUES (?, ?, ?, ?, ?, ?)',
       [id_membre, id_saison, type_culture, quantite_kg, superficie_ha, date_recolte]
@@ -70,7 +65,6 @@ const deleteRecolte = async (req, res) => {
   }
 }
 
-// Comparaison N vs N-1
 const getComparaison = async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -86,15 +80,16 @@ const getComparaison = async (req, res) => {
   }
 }
 
-// Saisons
 const getSaisons = async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM saisons ORDER BY date_debut DESC')
   res.json(rows)
 }
+
 const getSaisonActive = async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM saisons WHERE CURDATE() BETWEEN date_debut AND date_fin LIMIT 1')
   res.json(rows[0] || null)
 }
+
 const createSaison = async (req, res) => {
   try {
     const { nom_saison, date_debut, date_fin, description } = req.body
