@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken')
+const jwt  = require('jsonwebtoken')
 const pool = require('../config/db')
 
 const protect = async (req, res, next) => {
@@ -7,23 +7,20 @@ const protect = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ message: 'Token manquant. Veuillez vous connecter.' })
     }
-
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-    // ✅ Mampiasa id_utilisateur sy JOIN roles
+    // ✅ mampiasa id_utilisateur sy JOIN roles sy statut
     const [rows] = await pool.query(
-      `SELECT u.id_utilisateur, u.nom, u.prenom, u.email, u.statut, r.libelle AS role
+      `SELECT u.id_utilisateur AS id, u.nom, u.prenom, u.email, u.statut, r.libelle AS role
        FROM utilisateurs u
        JOIN roles r ON u.id_role = r.id_role
        WHERE u.id_utilisateur = ? AND u.statut = 'actif'`,
       [decoded.id]
     )
-
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Utilisateur introuvable ou suspendu.' })
     }
-
     req.user = rows[0]
     next()
   } catch (err) {

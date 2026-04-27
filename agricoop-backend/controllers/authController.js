@@ -18,6 +18,8 @@ const register = async (req, res) => {
       return res.status(409).json({ message: 'Cet email est déjà utilisé.' })
 
     const hash = await bcrypt.hash(password, 12)
+
+    // ✅ Tsy misy JOIN roles
     const [result] = await pool.query(
       'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role, actif) VALUES (?, ?, ?, ?, ?, ?)',
       [nom, prenom, email, hash, 'membre', 1]
@@ -35,11 +37,9 @@ const login = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ message: 'Email et mot de passe requis.' })
 
-    // ✅ Tsy mampiasa JOIN roles — mampiasa column "role" mivantana
+    // ✅ Tsy misy JOIN roles — jereo ny columns marina ao DB
     const [rows] = await pool.query(
-      `SELECT id, nom, prenom, email, mot_de_passe, role, actif
-       FROM utilisateurs
-       WHERE email = ?`,
+      `SELECT * FROM utilisateurs WHERE email = ?`,
       [email]
     )
 
@@ -47,26 +47,31 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' })
 
     const user = rows[0]
+    console.log('USER COLUMNS:', Object.keys(user)) // ← hahitantsika ny columns marina
 
-    if (user.actif === 0)
+    const suspended = user.statut === 'suspendu' || user.actif === 0
+    if (suspended)
       return res.status(403).json({ message: 'Votre compte est désactivé.' })
 
-    const isMatch = await bcrypt.compare(password, user.mot_de_passe)
+    const passwordField = user.mot_de_passe || user.password || user.mot_de_passe
+    const isMatch = await bcrypt.compare(password, passwordField)
     if (!isMatch)
       return res.status(401).json({ message: 'Email ou mot de passe incorrect.' })
 
-    const token = genToken(user.id, user.role)
+    const userId = user.id_utilisateur || user.id
+    const userRole = user.role || 'membre'
+    const token = genToken(userId, userRole)
 
     res.json({
       message: 'Connexion réussie.',
       token,
       user: {
-        id:     user.id,
+        id:     userId,
         nom:    user.nom,
         prenom: user.prenom,
         email:  user.email,
-        role:   user.role,
-        actif:  user.actif
+        role:   userRole,
+        actif:  1
       }
     })
   } catch (err) {
