@@ -33,7 +33,7 @@ const chargerMembres = async () => {
     if (filterStatut)  params.statut       = filterStatut
     if (filterCulture) params.type_culture = filterCulture
 
-    const response = await membresAPI.getAll(params) // ← object mivantana
+    const response = await membresAPI.getAll(params)
     setMembres(response.data.membres || [])
   } catch (error) {
     console.error(error)
