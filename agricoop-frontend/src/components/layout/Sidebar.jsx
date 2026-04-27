@@ -3,17 +3,17 @@ import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
 const navItems = [
-  { to: '/dashboard', icon: '📊', label: 'Tableau de Bord', roles: ['administrateur', 'gestionnaire'] },
-  { to: '/membres',   icon: '👥', label: 'Membres',         roles: ['administrateur', 'gestionnaire'] },
-  { to: '/stocks',    icon: '📦', label: 'Stocks',          roles: ['administrateur', 'gestionnaire'], badge: 2 },
-  { to: '/recoltes',  icon: '🌽', label: 'Récoltes',        roles: ['administrateur', 'gestionnaire'] },
-  { to: '/finances',  icon: '💰', label: 'Finances',        roles: ['administrateur'] },
+  { to: '/dashboard', icon: '📊', label: 'Tableau de Bord', roles: ['admin', 'gestionnaire'] },
+  { to: '/membres',   icon: '👥', label: 'Membres',         roles: ['admin', 'gestionnaire'] },
+  { to: '/stocks',    icon: '📦', label: 'Stocks',          roles: ['admin', 'gestionnaire'], badge: 2 },
+  { to: '/recoltes',  icon: '🌽', label: 'Récoltes',        roles: ['admin', 'gestionnaire'] },
+  { to: '/finances',  icon: '💰', label: 'Finances',        roles: ['admin'] },
   { to: '/profil',    icon: '👤', label: 'Mon Profil',      roles: ['membre'] },
 ]
 
 const systemItems = [
-  { to: '/rapports',     icon: '📄', label: 'Rapports',      roles: ['administrateur'] },
-  { to: '/utilisateurs', icon: '🛡',  label: 'Utilisateurs', roles: ['administrateur'] },
+  { to: '/rapports',     icon: '📄', label: 'Rapports',      roles: ['admin'] },
+  { to: '/utilisateurs', icon: '🛡',  label: 'Utilisateurs', roles: ['admin'] },
 ]
 
 export default function Sidebar() {
