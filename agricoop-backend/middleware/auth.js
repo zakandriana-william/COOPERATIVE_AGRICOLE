@@ -10,14 +10,14 @@ const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1]
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
 
-    // ✅ mampiasa id_utilisateur sy JOIN roles sy statut
     const [rows] = await pool.query(
-      `SELECT u.id_utilisateur AS id, u.nom, u.prenom, u.email, u.statut, r.libelle AS role
+      `SELECT id_utilisateur AS id, nom, prenom, email, statut,
+              (SELECT r.libelle FROM roles r WHERE r.id_role = u.id_role) AS role
        FROM utilisateurs u
-       JOIN roles r ON u.id_role = r.id_role
-       WHERE u.id_utilisateur = ? AND u.statut = 'actif'`,
+       WHERE id_utilisateur = ? AND statut = 'actif'`,
       [decoded.id]
     )
+
     if (rows.length === 0) {
       return res.status(401).json({ message: 'Utilisateur introuvable ou suspendu.' })
     }
@@ -42,7 +42,7 @@ const authorize = (...roles) => {
   }
 }
 
-const adminOnly   = authorize('administrateur')
-const adminOrGest = authorize('administrateur', 'gestionnaire')
+const adminOnly   = authorize('admin')
+const adminOrGest = authorize('admin', 'gestionnaire')
 
 module.exports = { protect, authorize, adminOnly, adminOrGest }
