@@ -1,51 +1,48 @@
 import { useLocation } from 'react-router-dom'
-import toast from 'react-hot-toast'
 
-const pageMeta = {
-  '/dashboard':    { title: 'Tableau de Bord',        bc: 'Dashboard' },
-  '/membres':      { title: 'Gestion des Membres',    bc: 'Membres' },
-  '/stocks':       { title: 'Gestion des Stocks',     bc: 'Stocks' },
-  '/recoltes':     { title: 'Gestion des Récoltes',   bc: 'Récoltes' },
-  '/finances':     { title: 'Gestion Financière',     bc: 'Finances' },
-  '/rapports':     { title: 'Rapports & Statistiques',bc: 'Rapports' },
-  '/utilisateurs': { title: 'Utilisateurs & Rôles',   bc: 'Utilisateurs' },
-  '/profil':       { title: 'Mon Profil',              bc: 'Profil' },
+const pageTitles = {
+  '/dashboard':    { title: 'Tableau de Bord',      sub: 'Dashboard' },
+  '/membres':      { title: 'Gestion des Membres',  sub: 'Membres' },
+  '/stocks':       { title: 'Gestion des Stocks',   sub: 'Stocks' },
+  '/recoltes':     { title: 'Récoltes & Saisons',   sub: 'Récoltes' },
+  '/finances':     { title: 'Gestion Financière',   sub: 'Finances' },
+  '/rapports':     { title: 'Rapports & Statistiques', sub: 'Rapports' },
+  '/utilisateurs': { title: 'Utilisateurs & Rôles', sub: 'Utilisateurs' },
+  '/profil':       { title: 'Mon Profil',            sub: 'Profil' },
+  '/register':     { title: 'Nouvel Utilisateur',   sub: 'Register' },
 }
 
-export default function Topbar({ onAdd, addLabel = '+ Ajouter' }) {
-  const { pathname } = useLocation()
-  const meta = pageMeta[pathname] || { title: 'AgriCoop', bc: '' }
+export default function Topbar({ onAdd, addLabel, onMenuToggle }) {
+  const location = useLocation()
+  const page = pageTitles[location.pathname] || { title: 'AgriCoop', sub: '' }
 
   return (
-    <div className="topbar">
-      <div className="topbar-left">
-        <div>
-          <div className="page-title">{meta.title}</div>
-          <div className="breadcrumb">
-            AgriCoop / <span>{meta.bc}</span>
-          </div>
+    <header className="topbar">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Hamburger menu — visible uniquement sur mobile */}
+        <button className="menu-toggle" onClick={onMenuToggle} aria-label="Menu">
+          ☰
+        </button>
+        <div className="topbar-left">
+          <div className="page-title">{page.title}</div>
+          <div className="breadcrumb">AgriCoop / <span>{page.sub}</span></div>
         </div>
       </div>
+
       <div className="topbar-right">
-        <div
-          className="notif-btn"
-          onClick={() => toast('⚠️ 2 alertes de stock critique')}
-          title="Notifications"
-        >
-          🔔 <div className="notif-dot" />
-        </div>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => toast('📤 Export en cours...')}
-        >
-          📤 Exporter
-        </button>
         {onAdd && (
           <button className="btn btn-primary btn-sm" onClick={onAdd}>
-            {addLabel}
+            + {addLabel || 'Nouveau'}
           </button>
         )}
+        <div className="notif-btn">
+          🔔
+          <div className="notif-dot" />
+        </div>
+        <button className="btn btn-ghost btn-sm">
+          ⬆️ <span>Exporter</span>
+        </button>
       </div>
-    </div>
+    </header>
   )
 }
