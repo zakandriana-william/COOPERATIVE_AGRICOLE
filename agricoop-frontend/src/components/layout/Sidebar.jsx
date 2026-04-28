@@ -2,8 +2,6 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
-// IMPORTANT: roles doivent être 'admin', 'gestionnaire', 'membre'
-// (corresponds exactement à ce que le backend renvoie)
 const navItems = [
   { to: '/dashboard', icon: '📊', label: 'Tableau de Bord', roles: ['admin', 'gestionnaire'] },
   { to: '/membres',   icon: '👥', label: 'Membres',         roles: ['admin', 'gestionnaire'] },
@@ -18,7 +16,7 @@ const systemItems = [
   { to: '/utilisateurs', icon: '🛡',  label: 'Utilisateurs', roles: ['admin'] },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -28,6 +26,11 @@ export default function Sidebar() {
     navigate('/login')
   }
 
+  const handleNavClick = () => {
+    // Ferme sidebar sur mobile après navigation
+    if (onClose) onClose()
+  }
+
   const initiales = user
     ? `${user.nom?.[0] || ''}${user.prenom?.[0] || ''}`.toUpperCase()
     : 'U'
@@ -35,18 +38,21 @@ export default function Sidebar() {
   const canSee = (roles) => user && roles.includes(user.role)
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' open' : ''}`}>
+      {/* Logo */}
       <div className="sidebar-logo">
         <div className="sidebar-logo-icon">🌾</div>
         <div className="sidebar-logo-name">AgriCoop</div>
         <div className="sidebar-logo-sub">Coopérative Agricole</div>
       </div>
 
+      {/* Navigation principale */}
       <div className="sidebar-section">Principal</div>
       {navItems.filter(item => canSee(item.roles)).map(item => (
         <NavLink
           key={item.to}
           to={item.to}
+          onClick={handleNavClick}
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
         >
           <span className="nav-icon">{item.icon}</span>
@@ -54,6 +60,7 @@ export default function Sidebar() {
         </NavLink>
       ))}
 
+      {/* Navigation système */}
       {systemItems.filter(item => canSee(item.roles)).length > 0 && (
         <>
           <div className="sidebar-section">Système</div>
@@ -61,6 +68,7 @@ export default function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={handleNavClick}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
             >
               <span className="nav-icon">{item.icon}</span>
@@ -70,6 +78,7 @@ export default function Sidebar() {
         </>
       )}
 
+      {/* User footer */}
       <div className="sidebar-user" onClick={handleLogout} title="Se déconnecter">
         <div className="user-avatar">{initiales}</div>
         <div className="user-info">
