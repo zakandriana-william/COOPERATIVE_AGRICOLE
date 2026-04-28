@@ -8,15 +8,20 @@ const membresRoutes  = require('./routes/membres')
 const stocksRoutes   = require('./routes/stocks')
 const recoltesRoutes = require('./routes/recoltes')
 const financesRoutes = require('./routes/finances')
-const { protect, adminOrGest, adminOnly } = require('./middleware/auth')
+const { protect, adminOnly, adminOrGest } = require('./middleware/auth')
 const pool = require('./config/db')
 
 const app = express()
 
-// ── MIDDLEWARES ──────────────────────────────────────────────────
+// ── CORS ────────────────────────────────────────────────────
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin.includes('vercel.app')) {
+    const allowed = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+    ]
+    // Autoriser toutes les origines vercel.app
+    if (!origin || allowed.includes(origin) || /\.vercel\.app$/.test(origin)) {
       callback(null, true)
     } else {
       callback(new Error('Not allowed by CORS'))
@@ -25,50 +30,33 @@ app.use(cors({
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
 }))
+
 app.use(express.json())
 app.use(morgan('dev'))
 
-// ── ROUTES PUBLIQUES ─────────────────────────────────────────────
-app.get('/', (req, res) => {
-  res.json({ message: '🌾 AgriCoop API est opérationnelle.' })
-})
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    message: '🌾 AgriCoop API opérationnelle',
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
-  })
-})
+// ── HEALTH ──────────────────────────────────────────────────
+app.get('/', (req, res) => res.json({ message: '🌾 AgriCoop API opérationnelle.' }))
+app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }))
 
-// ── AUTH ─────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes)
-
-// ── MEMBRES ──────────────────────────────────────────────────────
-app.use('/api/membres', membresRoutes)
-
-// ── STOCKS (produits + mouvements) ───────────────────────────────
-app.use('/api', stocksRoutes)
-
-// ── RÉCOLTES ─────────────────────────────────────────────────────
-app.use('/api/recoltes', recoltesRoutes)
-
-// ── FINANCES ─────────────────────────────────────────────────────
+// ── ROUTES ──────────────────────────────────────────────────
+app.use('/api/auth',         authRoutes)
+app.use('/api/membres',      membresRoutes)
+app.use('/api',              stocksRoutes)   // /api/produits, /api/mouvements, /api/alertes
+app.use('/api/recoltes',     recoltesRoutes)
 app.use('/api/transactions', financesRoutes)
 
-// ── DASHBOARD ────────────────────────────────────────────────────
-const financesController = require('./controllers/financesController')
-app.get('/api/dashboard/stats', protect, financesController.getDashboardStats)
+// ── DASHBOARD ───────────────────────────────────────────────
+const financesCtrl = require('./controllers/financesController')
+app.get('/api/dashboard/stats', protect, financesCtrl.getDashboardStats)
 
-// ── COTISATIONS ──────────────────────────────────────────────────
+// ── COTISATIONS ─────────────────────────────────────────────
 app.get('/api/cotisations', protect, adminOrGest, async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT c.*, CONCAT(u.prenom,' ',u.nom) AS membre_nom
+      SELECT c.*, CONCAT(m.prenom,' ',m.nom) AS membre_nom
       FROM cotisations c
-      JOIN membres m ON c.id_membre = m.id_membre
-      JOIN utilisateurs u ON m.id_utilisateur = u.id
-      ORDER BY c.annee DESC, c.statut_paiement
+      JOIN membres m ON c.membre_id = m.id
+      ORDER BY c.annee DESC
     `)
     res.json(rows)
   } catch (err) {
@@ -78,10 +66,10 @@ app.get('/api/cotisations', protect, adminOrGest, async (req, res) => {
 
 app.post('/api/cotisations', protect, adminOnly, async (req, res) => {
   try {
-    const { id_membre, annee, montant, date_paiement, statut_paiement } = req.body
+    const { membre_id, annee, montant, date_paiement, statut_paiement } = req.body
     const [result] = await pool.query(
-      'INSERT INTO cotisations (id_membre, annee, montant, date_paiement, statut_paiement) VALUES (?, ?, ?, ?, ?)',
-      [id_membre, annee, montant, date_paiement, statut_paiement]
+      'INSERT INTO cotisations (membre_id, annee, montant, date_paiement, statut_paiement) VALUES (?, ?, ?, ?, ?)',
+      [membre_id, annee, montant, date_paiement, statut_paiement || 'en_attente']
     )
     res.status(201).json({ message: 'Cotisation enregistrée.', id: result.insertId })
   } catch (err) {
@@ -89,79 +77,61 @@ app.post('/api/cotisations', protect, adminOnly, async (req, res) => {
   }
 })
 
-// ── UTILISATEURS ─────────────────────────────────────────────────
+// ── UTILISATEURS ────────────────────────────────────────────
 app.get('/api/utilisateurs', protect, adminOnly, async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-      SELECT id, nom, prenom, email, role, actif AS statut, date_inscription
-      FROM utilisateurs
-      ORDER BY date_inscription DESC
-    `)
+    const [rows] = await pool.query(
+      'SELECT id, nom, prenom, email, role, actif, created_at FROM utilisateurs ORDER BY created_at DESC'
+    )
     res.json(rows)
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur.', error: err.message })
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
 app.patch('/api/utilisateurs/:id/role', protect, adminOnly, async (req, res) => {
   try {
     const { role } = req.body
-    await pool.query(
-      'UPDATE utilisateurs SET role = ? WHERE id = ?',
-      [role, req.params.id]
-    )
+    await pool.query('UPDATE utilisateurs SET role = ? WHERE id = ?', [role, req.params.id])
     res.json({ message: 'Rôle mis à jour.' })
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur.', error: err.message })
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
-// ── FOURNISSEURS ─────────────────────────────────────────────────
+// ── FOURNISSEURS ────────────────────────────────────────────
 app.get('/api/fournisseurs', protect, adminOrGest, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM fournisseurs ORDER BY nom_fournisseur')
-    res.json(rows)
-  } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur.', error: err.message })
-  }
-})
-
-app.post('/api/fournisseurs', protect, adminOrGest, async (req, res) => {
-  try {
-    const { nom_fournisseur, contact, telephone, adresse } = req.body
-    const [r] = await pool.query(
-      'INSERT INTO fournisseurs (nom_fournisseur, contact, telephone, adresse) VALUES (?, ?, ?, ?)',
-      [nom_fournisseur, contact, telephone, adresse]
+    // Fournisseurs extraits des mouvements (pas de table séparée dans ce schema)
+    const [rows] = await pool.query(
+      'SELECT DISTINCT fournisseur FROM mouvements_stock WHERE fournisseur IS NOT NULL ORDER BY fournisseur'
     )
-    res.status(201).json({ message: 'Fournisseur créé.', id: r.insertId })
+    res.json(rows.map(r => ({ nom_fournisseur: r.fournisseur })))
   } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur.', error: err.message })
+    res.status(500).json({ message: 'Erreur serveur.' })
   }
 })
 
-// ── 404 ──────────────────────────────────────────────────────────
+// ── SAISONS (raccourci) ──────────────────────────────────────
+const recoltesCtrl = require('./controllers/recoltesController')
+app.get('/api/saisons',        protect, adminOrGest, recoltesCtrl.getSaisons)
+app.get('/api/saisons/active', protect, adminOrGest, recoltesCtrl.getSaisonActive)
+
+// ── 404 ─────────────────────────────────────────────────────
 app.use('*', (req, res) => {
   res.status(404).json({ message: `Route ${req.method} ${req.originalUrl} introuvable.` })
 })
 
-// ── ERREURS GLOBALES ─────────────────────────────────────────────
+// ── ERREURS GLOBALES ─────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error('❌ Erreur serveur :', err.message)
-  res.status(err.status || 500).json({
-    message: err.message || 'Erreur interne du serveur.'
-  })
+  console.error('❌', err.message)
+  res.status(err.status || 500).json({ message: err.message || 'Erreur interne.' })
 })
 
-// ── DÉMARRAGE ────────────────────────────────────────────────────
+// ── DÉMARRAGE ────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
-  console.log('')
-  console.log('🌾 ═══════════════════════════════════════')
-  console.log(`   AgriCoop API démarrée sur le port ${PORT}`)
-  console.log(`   Environnement : ${process.env.NODE_ENV || 'development'}`)
-  console.log(`   Santé : https://cooperative-agricole.onrender.com/api/health`)
-  console.log('🌾 ═══════════════════════════════════════')
-  console.log('')
+  console.log(`\n🌾 AgriCoop API — port ${PORT} — ${process.env.NODE_ENV || 'development'}\n`)
 })
 
 module.exports = app
