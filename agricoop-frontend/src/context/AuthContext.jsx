@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 
 const AuthContext = createContext(null)
@@ -41,10 +40,11 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  const hasRole      = (role) => user?.role === role
-  const isAdmin      = () => hasRole('admin')
+  // Roles: 'admin', 'gestionnaire', 'membre'
+  const hasRole        = (role) => user?.role === role
+  const isAdmin        = () => hasRole('admin')
   const isGestionnaire = () => hasRole('gestionnaire') || isAdmin()
-  const isMembre     = () => hasRole('membre')
+  const isMembre       = () => hasRole('membre')
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, isGestionnaire, isMembre }}>
