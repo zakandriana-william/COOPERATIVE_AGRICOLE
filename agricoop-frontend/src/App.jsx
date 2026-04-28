@@ -1,14 +1,14 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { PrivateRoute, AppLayout } from './components/layout/AppLayout'
-import LoginPage     from './pages/auth/LoginPage'
-import RegisterPage  from './pages/auth/RegisterPage'
-import DashboardPage from './pages/dashboard/DashboardPage'
-import MembresPage   from './pages/membres/MembresPage'
-import StocksPage    from './pages/stocks/StocksPage'
+import LoginPage        from './pages/auth/LoginPage'
+import RegisterPage     from './pages/auth/RegisterPage'
+import DashboardPage    from './pages/dashboard/DashboardPage'
+import MembresPage      from './pages/membres/MembresPage'
+import StocksPage       from './pages/stocks/StocksPage'
 import { RecoltesPage } from './pages/recoltes/RecoltesPage'
-import FinancesPage  from './pages/finances/FinancesPage'
-import RapportsPage  from './pages/rapports/RapportsPage'
+import FinancesPage     from './pages/finances/FinancesPage'
+import RapportsPage     from './pages/rapports/RapportsPage'
 import UtilisateursPage from './pages/utilisateurs/UtilisateursPage'
 
 export default function App() {
@@ -16,16 +16,11 @@ export default function App() {
     <AuthProvider>
       <Routes>
         {/* ── Publiques ── */}
-        <Route path="/login"    element={<LoginPage />} />
-        <Route path="/"         element={<Navigate to="/login" replace />} />
-
-        {/* ── Register — Admin seulement ── */}
-        <Route element={<PrivateRoute allowedRoles={['admin']} />}>
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/"      element={<Navigate to="/login" replace />} />
 
         {/* ── Admin + Gestionnaire ── */}
-        <Route element={<PrivateRoute allowedRoles={['administrateur']} />}>
+        <Route element={<PrivateRoute allowedRoles={['admin', 'gestionnaire']} />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/membres"   element={<MembresPage />} />
@@ -40,6 +35,7 @@ export default function App() {
             <Route path="/finances"     element={<FinancesPage />} />
             <Route path="/rapports"     element={<RapportsPage />} />
             <Route path="/utilisateurs" element={<UtilisateursPage />} />
+            <Route path="/register"     element={<RegisterPage />} />
           </Route>
         </Route>
 
