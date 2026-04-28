@@ -2,10 +2,12 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
+// IMPORTANT: roles doivent être 'admin', 'gestionnaire', 'membre'
+// (corresponds exactement à ce que le backend renvoie)
 const navItems = [
   { to: '/dashboard', icon: '📊', label: 'Tableau de Bord', roles: ['admin', 'gestionnaire'] },
   { to: '/membres',   icon: '👥', label: 'Membres',         roles: ['admin', 'gestionnaire'] },
-  { to: '/stocks',    icon: '📦', label: 'Stocks',          roles: ['admin', 'gestionnaire'], badge: 2 },
+  { to: '/stocks',    icon: '📦', label: 'Stocks',          roles: ['admin', 'gestionnaire'] },
   { to: '/recoltes',  icon: '🌽', label: 'Récoltes',        roles: ['admin', 'gestionnaire'] },
   { to: '/finances',  icon: '💰', label: 'Finances',        roles: ['admin'] },
   { to: '/profil',    icon: '👤', label: 'Mon Profil',      roles: ['membre'] },
@@ -30,18 +32,16 @@ export default function Sidebar() {
     ? `${user.nom?.[0] || ''}${user.prenom?.[0] || ''}`.toUpperCase()
     : 'U'
 
-  const canSee = (roles) => roles.includes(user?.role)
+  const canSee = (roles) => user && roles.includes(user.role)
 
   return (
     <aside className="sidebar">
-      {/* Logo */}
       <div className="sidebar-logo">
         <div className="sidebar-logo-icon">🌾</div>
         <div className="sidebar-logo-name">AgriCoop</div>
         <div className="sidebar-logo-sub">Coopérative Agricole</div>
       </div>
 
-      {/* Navigation principale */}
       <div className="sidebar-section">Principal</div>
       {navItems.filter(item => canSee(item.roles)).map(item => (
         <NavLink
@@ -51,11 +51,9 @@ export default function Sidebar() {
         >
           <span className="nav-icon">{item.icon}</span>
           {item.label}
-          {item.badge && <span className="nav-badge">{item.badge}</span>}
         </NavLink>
       ))}
 
-      {/* Navigation système */}
       {systemItems.filter(item => canSee(item.roles)).length > 0 && (
         <>
           <div className="sidebar-section">Système</div>
@@ -72,7 +70,6 @@ export default function Sidebar() {
         </>
       )}
 
-      {/* User footer */}
       <div className="sidebar-user" onClick={handleLogout} title="Se déconnecter">
         <div className="user-avatar">{initiales}</div>
         <div className="user-info">
