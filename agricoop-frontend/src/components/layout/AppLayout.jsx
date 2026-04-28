@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
 import Topbar  from './Topbar'
 
-// Route protégée — redirige vers /login si non connecté
+// Route protégée
 export function PrivateRoute({ allowedRoles }) {
   const { user, loading } = useAuth()
 
@@ -21,13 +22,32 @@ export function PrivateRoute({ allowedRoles }) {
   return <Outlet />
 }
 
-// Layout principal avec sidebar + topbar
+// Layout principal avec sidebar + topbar + support mobile
 export function AppLayout({ onAdd, addLabel }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const toggleSidebar = () => setSidebarOpen(prev => !prev)
+  const closeSidebar  = () => setSidebarOpen(false)
+
   return (
     <div className="app-layout">
-      <Sidebar />
+      {/* Overlay mobile */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={closeSidebar} />
+      )}
+
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={closeSidebar}
+      />
+
       <div className="app-main">
-        <Topbar onAdd={onAdd} addLabel={addLabel} />
+        <Topbar
+          onAdd={onAdd}
+          addLabel={addLabel}
+          onMenuToggle={toggleSidebar}
+        />
         <div className="app-content slide-up">
           <Outlet />
         </div>
