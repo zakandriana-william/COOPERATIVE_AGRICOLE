@@ -20,6 +20,7 @@ app.use(cors({
       'http://localhost:3000',
       'http://localhost:5173',
     ]
+    // Autoriser toutes les origines vercel.app
     if (!origin || allowed.includes(origin) || /\.vercel\.app$/.test(origin)) {
       callback(null, true)
     } else {
@@ -40,7 +41,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Dat
 // ── ROUTES ──────────────────────────────────────────────────
 app.use('/api/auth',         authRoutes)
 app.use('/api/membres',      membresRoutes)
-app.use('/api',              stocksRoutes)
+app.use('/api',              stocksRoutes)   // /api/produits, /api/mouvements, /api/alertes
 app.use('/api/recoltes',     recoltesRoutes)
 app.use('/api/transactions', financesRoutes)
 
@@ -88,25 +89,11 @@ app.get('/api/utilisateurs', protect, adminOnly, async (req, res) => {
   }
 })
 
-// PATCH rôle
 app.patch('/api/utilisateurs/:id/role', protect, adminOnly, async (req, res) => {
   try {
     const { role } = req.body
-    if (!['admin','gestionnaire','membre'].includes(role))
-      return res.status(400).json({ message: 'Rôle invalide.' })
     await pool.query('UPDATE utilisateurs SET role = ? WHERE id = ?', [role, req.params.id])
     res.json({ message: 'Rôle mis à jour.' })
-  } catch (err) {
-    res.status(500).json({ message: 'Erreur serveur.' })
-  }
-})
-
-// ✅ PATCH actif/suspendu — NOUVEAU
-app.patch('/api/utilisateurs/:id/actif', protect, adminOnly, async (req, res) => {
-  try {
-    const { actif } = req.body
-    await pool.query('UPDATE utilisateurs SET actif = ? WHERE id = ?', [actif ? 1 : 0, req.params.id])
-    res.json({ message: actif ? 'Compte activé.' : 'Compte désactivé.' })
   } catch (err) {
     res.status(500).json({ message: 'Erreur serveur.' })
   }
@@ -115,6 +102,7 @@ app.patch('/api/utilisateurs/:id/actif', protect, adminOnly, async (req, res) =>
 // ── FOURNISSEURS ────────────────────────────────────────────
 app.get('/api/fournisseurs', protect, adminOrGest, async (req, res) => {
   try {
+    // Fournisseurs extraits des mouvements (pas de table séparée dans ce schema)
     const [rows] = await pool.query(
       'SELECT DISTINCT fournisseur FROM mouvements_stock WHERE fournisseur IS NOT NULL ORDER BY fournisseur'
     )
@@ -124,7 +112,7 @@ app.get('/api/fournisseurs', protect, adminOrGest, async (req, res) => {
   }
 })
 
-// ── SAISONS ──────────────────────────────────────────────────
+// ── SAISONS (raccourci) ──────────────────────────────────────
 const recoltesCtrl = require('./controllers/recoltesController')
 app.get('/api/saisons',        protect, adminOrGest, recoltesCtrl.getSaisons)
 app.get('/api/saisons/active', protect, adminOrGest, recoltesCtrl.getSaisonActive)
